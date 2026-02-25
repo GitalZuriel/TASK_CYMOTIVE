@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Copilot — Architecture & Design</title>
+
+    <!-- Base -->
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/animate.min.css">
+    <link rel="stylesheet" href="/static/css/fontawesome-all.min.css">
+
+    <!-- Copilot Theme + Architecture Page -->
+    <link rel="stylesheet" href="/static/css/copilot.css">
+    <link rel="stylesheet" href="/static/css/architecture.css">
+
+    <!-- Mermaid.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar-cyber">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <a href="/" class="navbar-brand-cyber">
+                    <div class="brand-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Cyber Copilot</h1>
+                        <span>Architecture & Design</span>
+                    </div>
+                </a>
+
+                <div class="nav-status">
+                    <a href="/" class="btn-nav-link btn-nav-dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="arch-page-header">
+        <div class="arch-header-content">
+            <h2><i class="fas fa-project-diagram"></i> Architecture & Design Decisions</h2>
+            <p>How the Cybersecurity Copilot RAG pipeline works — from incident report to structured analysis</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="arch-content">
+
+        <!-- ============================================ -->
+        <!-- SECTION 1: End-to-End Pipeline Flow          -->
+        <!-- ============================================ -->
+        <div class="arch-section fade-in-section">
+            <div class="arch-section-divider">
+                <span class="section-number">01</span>
+                <h3>End-to-End Pipeline</h3>
+            </div>
+        </div>
+
+    </div><!-- temporarily close arch-content for full-width -->
+
+    <div class="pipeline-fullwidth">
+        <div class="pipeline-title">
+            <i class="fas fa-sitemap"></i> Pipeline Flow
+        </div>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+flowchart TD
+    A["<b>Incident Report</b><br/>Free-text analyst input"]:::input --> B["<b>Preprocessor</b><br/>Validate &bull; Extract entities<br/>CVE, IP, ECU, attack indicators"]:::process
+
+    B -->|"valid input"| QR["<b>LLM Query Rewrite</b><br/>gpt-4o-mini translates symptoms<br/>to technical cybersecurity terms"]:::queryrewrite
+    B -->|"incomplete"| D["<b>Edge Case Handler</b><br/>Generate clarification questions"]:::warning
+    D -.->|"analyst provides more info"| A
+
+    QR --> C["<b>Hybrid Retrieval</b><br/>Parallel execution"]:::retrieval
+
+    C --> E["<b>Semantic Search</b><br/>ChromaDB cosine similarity<br/>top-7 candidates"]:::retrieval
+    C --> F["<b>BM25 Keyword Search</b><br/>Custom automotive tokenizer<br/>top-7 candidates"]:::retrieval
+
+    E --> G["<b>RRF Fusion</b><br/>Reciprocal Rank Fusion, k=60<br/>Deduplication"]:::fusion
+    F --> G
+
+    G --> H["<b>Cross-Encoder Reranking</b><br/>ms-marco-MiniLM-L-6-v2<br/>80% CE + 20% Domain scoring"]:::rerank
+
+    H --> I["<b>Context Guardrails</b><br/>Score threshold &ge; 30<br/>Dedup &bull; Token budget 4000 chars"]:::guardrail
+
+    I --> J["<b>LLM — Summary</b><br/>Structured incident analysis<br/>+ Entity validation"]:::llm
+    J --> K["<b>LLM — Mitigation</b><br/>Phased response plan<br/>+ Grounding citations"]:::llm
+
+    K --> L["<b>Confidence Check</b><br/>avg &lt; 0.4 → clarification"]:::check
+    L --> M["<b>Structured Output</b><br/>Summary &bull; Mitigation &bull; Similar incidents<br/>Entities &bull; Stats &bull; Confidence scores"]:::output
+
+    classDef input fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef process fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef queryrewrite fill:#ffffff,stroke:#f59e0b,color:#1B2129,stroke-width:2px
+    classDef retrieval fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef fusion fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef rerank fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef guardrail fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef llm fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef check fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef output fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+    classDef warning fill:#ffffff,stroke:#2A2AFF,color:#1B2129,stroke-width:2px
+            </pre>
+        </div>
+    </div>
+
+    <div class="arch-content"><!-- reopen arch-content -->
+
+        <!-- ============================================ -->
+        <!-- SECTION 2: Design Decisions                   -->
+        <!-- ============================================ -->
+        <div class="arch-section fade-in-section">
+            <div class="arch-section-divider">
+                <span class="section-number">02</span>
+                <h3>Design Decisions & Tradeoffs</h3>
+            </div>
+
+            <div class="decisions-grid">
+
+                <!-- Decision 1: Model Choice -->
+                <div class="result-card decision-card">
+                    <div class="card-header-cyber" style="background: linear-gradient(135deg, #2A2AFF, #4B6BFF);">
+                        <i class="fas fa-robot"></i> Model Choice
+                    </div>
+                    <div class="card-body-cyber">
+                        <div class="decision-label">Decision</div>
+                        <p><strong>GPT-4o-mini</strong> as default, with hot-swap support for GPT-4o and Claude Sonnet 4.</p>
+                        <div class="decision-label">Alternatives Considered</div>
+                        <ul>
+                            <li>GPT-4o only (high quality, expensive)</li>
+                            <li>Claude only (excellent reasoning, highest cost)</li>
+                            <li>Open-source LLM (free, lower quality)</li>
+                        </ul>
+                        <div class="decision-tradeoff">
+                            <strong><i class="fas fa-balance-scale"></i> Tradeoff:</strong>
+                            GPT-4o-mini is ~17x cheaper than GPT-4o and ~25x cheaper than Claude, while delivering very good summarization quality. For a PoC, cost-effectiveness wins.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decision 2: Hybrid Search -->
+                <div class="result-card decision-card">
+                    <div class="card-header-cyber" style="background: linear-gradient(135deg, #059669, #4BFF2A);">
+                        <i class="fas fa-search-plus"></i> Hybrid Search
+                    </div>
+                    <div class="card-body-cyber">
+                        <div class="decision-label">Decision</div>
+                        <p>Parallel <strong>semantic search</strong> (ChromaDB) + <strong>BM25 keyword search</strong>, fused via Reciprocal Rank Fusion (k=60).</p>
+                        <div class="decision-label">Why Not Vector-Only?</div>
+                        <ul>
+                            <li>Semantic search misses exact terms like <code>CVE-2024-2851</code> or CAN ID <code>0x0012</code></li>
+                            <li>BM25 excels at exact term matching</li>
+                            <li>RRF merges rankings without score normalization — simple and research-proven</li>
+                        </ul>
+                        <div class="decision-tradeoff">
+                            <strong><i class="fas fa-balance-scale"></i> Tradeoff:</strong>
+                            Two parallel searches add minimal latency (~50ms) but dramatically improve recall for technical queries.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decision 3: Cross-Encoder Reranking -->
+                <div class="result-card decision-card">
+                    <div class="card-header-cyber" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6);">
+                        <i class="fas fa-sort-amount-down"></i> Cross-Encoder Reranking
+                    </div>
+                    <div class="card-body-cyber">
+                        <div class="decision-label">Decision</div>
+                        <p><strong>ms-marco-MiniLM-L-6-v2</strong> cross-encoder with domain-aware blending: 80% CE + 20% domain score.</p>
+                        <div class="decision-label">Why a Reranking Stage?</div>
+                        <ul>
+                            <li>Bi-encoder encodes query & document independently — fast but less accurate</li>
+                            <li>Cross-encoder processes them jointly — far more precise scoring</li>
+                            <li>Only runs on ~7-14 candidates (post-RRF), so overhead is minimal</li>
+                        </ul>
+                        <div class="decision-tradeoff">
+                            <strong><i class="fas fa-balance-scale"></i> Tradeoff:</strong>
+                            ~200ms extra latency for significantly better precision. Domain scoring compensates for automotive terms the cross-encoder may not understand.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decision 4: Entity Validation -->
+                <div class="result-card decision-card">
+                    <div class="card-header-cyber" style="background: linear-gradient(135deg, #0891b2, #06b6d4);">
+                        <i class="fas fa-check-double"></i> Entity Validation
+                    </div>
+                    <div class="card-body-cyber">
+                        <div class="decision-label">Decision</div>
+                        <p><strong>Regex extraction + LLM validation</strong> in the same summarization call — zero additional cost.</p>
+                        <div class="decision-label">How It Works</div>
+                        <div class="entity-flow">
+                            <div class="entity-flow-step">
+                                <span class="step-badge badge-regex">Regex</span>
+                                <code>CVE-2024-2851</code> → <span class="text-success">confirmed</span>
+                            </div>
+                            <div class="entity-flow-step">
+                                <span class="step-badge badge-llm">LLM</span>
+                                <code>"infotanment"</code> → <span class="text-warning">corrected</span> → Infotainment ECU
+                            </div>
+                            <div class="entity-flow-step">
+                                <span class="step-badge badge-llm">LLM</span>
+                                DNS protocol → <span class="text-info">added</span>
+                            </div>
+                        </div>
+                        <div class="decision-tradeoff">
+                            <strong><i class="fas fa-balance-scale"></i> Tradeoff:</strong>
+                            Regex = 100% precision on exact matches. LLM = high recall for typos and implicit entities. Combined at $0 extra cost.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decision 5: Grounding & Hallucination Prevention -->
+                <div class="result-card decision-card">
+                    <div class="card-header-cyber" style="background: linear-gradient(135deg, #dc2626, #ef4444);">
+                        <i class="fas fa-anchor"></i> Grounding Rules
+                    </div>
+                    <div class="card-body-cyber">
+                        <div class="decision-label">Core Principle</div>
+                        <p>Every claim in the output must be grounded in one of three sources:</p>
+                        <ol>
+                            <li>An explicit fact from the incident report</li>
+                            <li>A pattern from a retrieved past incident</li>
+                            <li>A direct countermeasure for the identified attack vector</li>
+                        </ol>
+                        <p>Anything else must be marked as <code>[Inferred]</code> or <code>[General best practice]</code>.</p>
+                        <div class="decision-tradeoff">
+                            <strong><i class="fas fa-balance-scale"></i> Tradeoff:</strong>
+                            Stricter grounding rules may reduce output volume, but in cybersecurity, a fabricated indicator is worse than a missing one.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decision 6: Context Guardrails -->
+                <div class="result-card decision-card">
+                    <div class="card-header-cyber" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+                        <i class="fas fa-shield-alt"></i> Context Guardrails
+                    </div>
+                    <div class="card-body-cyber">
+                        <div class="decision-label">Three-Layer Filtering</div>
+                        <div class="guardrail-funnel">
+                            <div class="funnel-step">
+                                <span class="funnel-count">14</span>
+                                <span class="funnel-label">RRF candidates</span>
+                            </div>
+                            <div class="funnel-arrow"><i class="fas fa-arrow-down"></i></div>
+                            <div class="funnel-step">
+                                <span class="funnel-count">~5</span>
+                                <span class="funnel-label">Score threshold &ge; 30</span>
+                            </div>
+                            <div class="funnel-arrow"><i class="fas fa-arrow-down"></i></div>
+                            <div class="funnel-step">
+                                <span class="funnel-count">~3</span>
+                                <span class="funnel-label">Near-duplicate removal</span>
+                            </div>
+                            <div class="funnel-arrow"><i class="fas fa-arrow-down"></i></div>
+                            <div class="funnel-step funnel-final">
+                                <span class="funnel-count">2</span>
+                                <span class="funnel-label">Token budget (4000 chars)</span>
+                            </div>
+                        </div>
+                        <div class="decision-tradeoff">
+                            <strong><i class="fas fa-balance-scale"></i> Tradeoff:</strong>
+                            Aggressive filtering may exclude marginally relevant incidents, but prevents LLM context pollution and keeps costs predictable.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECTION 3: Tech Stack                         -->
+        <!-- ============================================ -->
+        <div class="arch-section fade-in-section">
+            <div class="arch-section-divider">
+                <span class="section-number">03</span>
+                <h3>Tech Stack</h3>
+            </div>
+
+            <div class="result-card">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #06b6d4, #22d3ee);">
+                    <i class="fas fa-layer-group"></i> Technology Overview
+                </div>
+                <div class="card-body-cyber">
+                    <div class="tech-grid">
+                        <div class="tech-layer">
+                            <div class="tech-layer-title"><i class="fas fa-brain"></i> LLM Layer</div>
+                            <span class="tech-badge"><i class="fas fa-star" style="color: #4BFF2A;"></i> GPT-4o-mini</span>
+                            <span class="tech-badge">GPT-4o</span>
+                            <span class="tech-badge">Claude Sonnet 4</span>
+                            <span class="tech-badge">LangChain</span>
+                            <span class="tech-badge">Pydantic v2</span>
+                        </div>
+                        <div class="tech-layer">
+                            <div class="tech-layer-title"><i class="fas fa-search"></i> Retrieval Layer</div>
+                            <span class="tech-badge"><i class="fas fa-database" style="color: #06b6d4;"></i> ChromaDB</span>
+                            <span class="tech-badge">all-MiniLM-L6-v2 (default)</span>
+                            <span class="tech-badge">text-embedding-3-small</span>
+                            <span class="tech-badge">rank-bm25</span>
+                            <span class="tech-badge">RRF (k=60)</span>
+                        </div>
+                        <div class="tech-layer">
+                            <div class="tech-layer-title"><i class="fas fa-sort-amount-down"></i> Reranking Layer</div>
+                            <span class="tech-badge"><i class="fas fa-crosshairs" style="color: #8b5cf6;"></i> ms-marco-MiniLM-L-6-v2</span>
+                            <span class="tech-badge">Sigmoid Normalization</span>
+                            <span class="tech-badge">Domain Scoring</span>
+                        </div>
+                        <div class="tech-layer">
+                            <div class="tech-layer-title"><i class="fas fa-code"></i> Preprocessing</div>
+                            <span class="tech-badge">Regex Entity Extraction</span>
+                            <span class="tech-badge">CVE / IP / ECU detection</span>
+                            <span class="tech-badge">Custom BM25 Tokenizer</span>
+                            <span class="tech-badge">Garbled Text Detection</span>
+                            <span class="tech-badge"><i class="fas fa-pen-fancy" style="color: #f59e0b;"></i> LLM Query Rewrite</span>
+                        </div>
+                        <div class="tech-layer">
+                            <div class="tech-layer-title"><i class="fas fa-desktop"></i> Frontend</div>
+                            <span class="tech-badge">Flask</span>
+                            <span class="tech-badge">Bootstrap 4</span>
+                            <span class="tech-badge">jQuery</span>
+                            <span class="tech-badge">Font Awesome 6</span>
+                            <span class="tech-badge">Mermaid.js</span>
+                        </div>
+                        <div class="tech-layer">
+                            <div class="tech-layer-title"><i class="fas fa-chart-bar"></i> Evaluation</div>
+                            <span class="tech-badge">Precision@K</span>
+                            <span class="tech-badge">Recall@K</span>
+                            <span class="tech-badge">MRR</span>
+                            <span class="tech-badge">nDCG@K</span>
+                            <span class="tech-badge">Paraphrase Stability</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECTION 5: Cost Comparison                    -->
+        <!-- ============================================ -->
+        <div class="arch-section fade-in-section">
+            <div class="arch-section-divider">
+                <span class="section-number">04</span>
+                <h3>Cost & Latency Comparison</h3>
+            </div>
+
+            <div class="result-card">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #059669, #10b981);">
+                    <i class="fas fa-dollar-sign"></i> Model Cost Analysis
+                </div>
+                <div class="card-body-cyber">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Input Cost <small>(per 1K tokens)</small></th>
+                                <th>Output Cost <small>(per 1K tokens)</small></th>
+                                <th>Typical Analysis</th>
+                                <th>Daily <small>(100 queries)</small></th>
+                                <th>Monthly <small>(~3,000)</small></th>
+                                <th>Quality</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="recommend-row">
+                                <td><strong>GPT-4o-mini</strong> <span class="recommend-badge">Default</span></td>
+                                <td>$0.00015</td>
+                                <td>$0.0006</td>
+                                <td class="highlight-cell">~$0.002</td>
+                                <td>~$0.15</td>
+                                <td class="highlight-cell">~$4.50</td>
+                                <td><span class="quality-bar quality-good">Very Good</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>GPT-4o</strong></td>
+                                <td>$0.0025</td>
+                                <td>$0.01</td>
+                                <td>~$0.025</td>
+                                <td>~$2.50</td>
+                                <td>~$75</td>
+                                <td><span class="quality-bar quality-better">Excellent</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Claude Sonnet 4</strong></td>
+                                <td>$0.003</td>
+                                <td>$0.015</td>
+                                <td>~$0.04</td>
+                                <td>~$4.00</td>
+                                <td>~$120</td>
+                                <td><span class="quality-bar quality-best">Excellent</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="arch-callout">
+                        <i class="fas fa-lightbulb"></i>
+                        <div>
+                            <strong>Bottom line:</strong> With GPT-4o-mini, 10,000 incident analyses cost approximately <strong>$20</strong>.
+                            The system supports hot-swapping to GPT-4o or Claude Sonnet for higher-stakes analyses — no code changes needed, just a parameter switch.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token breakdown -->
+            <div class="result-card" style="margin-top: 20px;">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #2A2AFF, #4B6BFF);">
+                    <i class="fas fa-coins"></i> Cost Breakdown Per Run (GPT-4o-mini)
+                </div>
+                <div class="card-body-cyber">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Pipeline Stage</th>
+                                <th>Tokens (est.)</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><i class="fas fa-file-alt" style="color: var(--accent-blue);"></i> Summarization</td>
+                                <td>~1,200 input + ~500 output</td>
+                                <td>~$0.00048</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-tasks" style="color: var(--accent-green);"></i> Mitigation</td>
+                                <td>~1,500 input + ~600 output</td>
+                                <td>~$0.00059</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-pen-fancy" style="color: var(--accent-orange);"></i> Query Rewrite</td>
+                                <td>~200 input + ~80 output</td>
+                                <td>~$0.00008</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-vector-square" style="color: var(--accent-cyan);"></i> Embeddings</td>
+                                <td>~200 tokens query</td>
+                                <td>~$0.000004</td>
+                            </tr>
+                            <tr style="font-weight: 600; border-top: 2px solid var(--border-color);">
+                                <td>Total per run</td>
+                                <td>~4,280 tokens</td>
+                                <td class="highlight-cell">~$0.001 – $0.002</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECTION 6: Scalability                        -->
+        <!-- ============================================ -->
+        <div class="arch-section fade-in-section">
+            <div class="arch-section-divider">
+                <span class="section-number">05</span>
+                <h3>Scalability — PoC vs. Production</h3>
+            </div>
+
+            <div class="result-card">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+                    <i class="fas fa-expand-arrows-alt"></i> Current State & Production Roadmap
+                </div>
+                <div class="card-body-cyber">
+                    <table class="comparison-table scalability-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th><i class="fas fa-flask"></i> Current PoC</th>
+                                <th><i class="fas fa-rocket"></i> Production Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Knowledge Base</strong></td>
+                                <td>ChromaDB local, 15 incidents</td>
+                                <td>Managed Pinecone / Weaviate, 10,000+ incidents</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Embeddings</strong></td>
+                                <td>Local model (all-MiniLM-L6-v2), OpenAI optional</td>
+                                <td>Batch API or local GPU model</td>
+                            </tr>
+                            <tr>
+                                <td><strong>LLM</strong></td>
+                                <td>Synchronous, single model</td>
+                                <td>Async + queue + response caching</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Server</strong></td>
+                                <td>Flask dev server (port 5000)</td>
+                                <td>Gunicorn + nginx + Docker</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monitoring</strong></td>
+                                <td>Python logging + built-in stats</td>
+                                <td>Prometheus + Grafana</td>
+                            </tr>
+                            <tr>
+                                <td><strong>LLM Observability</strong></td>
+                                <td>Console logs</td>
+                                <td>LangSmith / LangFuse</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Logging</strong></td>
+                                <td>Console output</td>
+                                <td>ELK Stack / CloudWatch</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alerting</strong></td>
+                                <td>—</td>
+                                <td>PagerDuty / OpsGenie</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Auth</strong></td>
+                                <td>None (localhost)</td>
+                                <td>SSO / RBAC</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cost Tracking</strong></td>
+                                <td>Per-run in API response</td>
+                                <td>Budget alerts + drift detection</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="arch-callout" style="background: rgba(245, 158, 11, 0.06); border-color: rgba(245, 158, 11, 0.2);">
+                        <i class="fas fa-info-circle" style="color: var(--accent-orange);"></i>
+                        <div>
+                            <strong>Transparency:</strong> The production column is an architectural plan, not implemented features.
+                            The PoC focuses on pipeline quality (retrieval accuracy, grounding, structured output) — the right foundation for scaling.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECTION 6: Prompt Engineering                -->
+        <!-- ============================================ -->
+        <div class="arch-section fade-in-section">
+            <div class="arch-section-divider">
+                <span class="section-number">06</span>
+                <h3>Prompt Engineering</h3>
+            </div>
+
+            <!-- Strategy Overview -->
+            <div class="result-card">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6);">
+                    <i class="fas fa-layer-group"></i> Prompting Strategy — Layered Architecture
+                </div>
+                <div class="card-body-cyber">
+                    <p style="margin-bottom: 16px;">The system uses a <strong>4-layer prompting architecture</strong>, where each layer adds context and constraints:</p>
+                    <div class="prompt-layers">
+                        <div class="prompt-layer-item">
+                            <span class="prompt-layer-num">1</span>
+                            <div>
+                                <strong>System Prompt</strong>
+                                <span class="prompt-layer-desc">— defines identity, domain expertise, and grounding rules</span>
+                            </div>
+                        </div>
+                        <div class="prompt-layer-item">
+                            <span class="prompt-layer-num">2</span>
+                            <div>
+                                <strong>Task Prompts</strong>
+                                <span class="prompt-layer-desc">— specific instructions per task (summarization / mitigation)</span>
+                            </div>
+                        </div>
+                        <div class="prompt-layer-item">
+                            <span class="prompt-layer-num">3</span>
+                            <div>
+                                <strong>Few-Shot Examples</strong>
+                                <span class="prompt-layer-desc">— complete input/output examples showing the exact expected format</span>
+                            </div>
+                        </div>
+                        <div class="prompt-layer-item">
+                            <span class="prompt-layer-num">4</span>
+                            <div>
+                                <strong>Dynamic Context (RAG)</strong>
+                                <span class="prompt-layer-desc">— retrieved similar incidents + preprocessor-extracted entities</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Prompt -->
+            <div class="result-card" style="margin-top: 20px;">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #dc2626, #ef4444);">
+                    <i class="fas fa-robot"></i> System Prompt
+                </div>
+                <div class="card-body-cyber">
+                    <pre class="prompt-block"><code>You are a senior automotive cybersecurity analyst assistant.
+You help security analysts investigate and respond to vehicle
+cybersecurity incidents. You have deep expertise in:
+- Automotive network protocols (CAN, LIN, FlexRay, Automotive Ethernet)
+- ECU security and firmware analysis
+- V2X communication security
+- OTA update security
+- UNECE WP.29 and ISO/SAE 21434 standards
+
+## Grounding Rules (CRITICAL)
+Your responses MUST be grounded in the provided evidence:
+1. Retrieved incidents: Reference specific past incidents from the
+   RAG context. Cite the incident title or ID.
+2. Report data only: Only state facts explicitly present in the
+   incident report. If you infer, mark as "[Inferred]".
+3. No ungrounded knowledge: Do NOT introduce CVEs, tools, or
+   frameworks not in the report. Mark external knowledge as
+   "[General best practice]".
+4. Severity consistency: If the preprocessor provides severity,
+   either agree with justification or explicitly explain divergence.</code></pre>
+
+                    <div class="prompt-techniques-grid">
+                        <div class="prompt-technique">
+                            <span class="technique-badge badge-identity"><i class="fas fa-id-badge"></i> Role</span>
+                            <span>Domain-specific identity (automotive cyber analyst)</span>
+                        </div>
+                        <div class="prompt-technique">
+                            <span class="technique-badge badge-ground"><i class="fas fa-anchor"></i> Grounding</span>
+                            <span>Every claim must trace to evidence</span>
+                        </div>
+                        <div class="prompt-technique">
+                            <span class="technique-badge badge-negative"><i class="fas fa-ban"></i> Negative</span>
+                            <span>"Do NOT introduce" — prevents hallucination</span>
+                        </div>
+                        <div class="prompt-technique">
+                            <span class="technique-badge badge-marking"><i class="fas fa-tag"></i> Marking</span>
+                            <span>[Inferred] / [General best practice] labels</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summarization Prompt -->
+            <div class="result-card" style="margin-top: 20px;">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #2A2AFF, #4B6BFF);">
+                    <i class="fas fa-file-alt"></i> Prompt 1 — Summarization
+                </div>
+                <div class="card-body-cyber">
+                    <pre class="prompt-block"><code>Analyze the following automotive cybersecurity incident report
+and any similar past incidents. Produce a structured summary.
+
+## Similar Past Incidents (from RAG retrieval)
+{similar_incidents}
+
+## Current Incident Report
+{incident_report}
+
+## Preprocessor Extraction (automated)
+{extracted_fields}
+
+## Instructions
+Produce a structured summary with EXACTLY these sections:
+
+**Incident Overview**: 2-3 sentences. Use ONLY facts from the report.
+**Severity**: Critical / High / Medium / Low — with justification.
+**Attack Vector**: Method of attack (network, physical, wireless…)
+**Affected Systems**: ECUs, modules, or subsystems impacted.
+**Key Indicators**: ONLY IPs, CVEs, CAN IDs explicitly in the report.
+**Timeline**: Sequence of events. Mark uncertain as "[Estimated]".
+
+## Entity Validation
+Review auto-extracted entities from the preprocessor above.
+1. CONFIRM correctly extracted entities
+2. CORRECT entities with typos (show original → corrected)
+3. ADD entities in the report that the preprocessor missed
+⚠️ Do NOT invent entities not in the report text.</code></pre>
+
+                    <div class="decision-label">Techniques Used</div>
+                    <table class="comparison-table" style="margin-top: 8px;">
+                        <thead>
+                            <tr>
+                                <th>Technique</th>
+                                <th>Implementation</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Structured Output</strong></td>
+                                <td>6 defined sections with headers</td>
+                                <td>Ensures consistency and completeness</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Dynamic Context</strong></td>
+                                <td><code>{similar_incidents}</code>, <code>{extracted_fields}</code></td>
+                                <td>RAG — model receives relevant info</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Negative Prompting</strong></td>
+                                <td>"Do NOT invent indicators"</td>
+                                <td>Prevents hallucinated IOCs</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Confidence Markers</strong></td>
+                                <td>"Mark uncertain as [Estimated]"</td>
+                                <td>Transparency about certainty</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Entity Validation</strong></td>
+                                <td>LLM verifies/corrects regex results</td>
+                                <td>Precision (regex) + recall (LLM), $0 extra</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Few-Shot Example</strong></td>
+                                <td>Complete input → output example</td>
+                                <td>Shows exact expected format</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Mitigation Prompt -->
+            <div class="result-card" style="margin-top: 20px;">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #059669, #4BFF2A);">
+                    <i class="fas fa-tasks"></i> Prompt 2 — Mitigation
+                </div>
+                <div class="card-body-cyber">
+                    <pre class="prompt-block"><code>Based on the incident summary and similar past incidents,
+provide a structured mitigation and response plan.
+
+## Incident Summary
+{incident_summary}
+
+## Similar Past Incidents
+{similar_incidents}
+
+## Instructions
+Provide recommendations in EXACTLY these sections:
+
+**Immediate Actions (0-24 Hours)**: Containment and triage.
+  Each action must include What to do + Why (grounding).
+**Short-term (1-7 Days)**: Investigation, patching, hardening.
+  Scoped to the specific attack — no general wish-lists.
+**Long-term Recommendations**: Only if a past incident shows
+  incremental fixes were insufficient. Mark architectural
+  changes as "[Architectural — requires engineering review]".
+**Related Standards**: ONLY directly relevant standards.
+  Mark general knowledge as "[General best practice]".
+
+## Grounding Constraint
+Every recommendation must trace back to:
+- A fact in the incident report
+- A pattern from a retrieved past incident
+- A direct countermeasure for the identified attack vector
+If you cannot ground a recommendation, do not include it.</code></pre>
+
+                    <div class="decision-label">Techniques Used</div>
+                    <table class="comparison-table" style="margin-top: 8px;">
+                        <thead>
+                            <tr>
+                                <th>Technique</th>
+                                <th>Implementation</th>
+                                <th>Why</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Chain-of-Context</strong></td>
+                                <td>Summary → Mitigation prompt</td>
+                                <td>Mitigation is based on summary, not raw report</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phased Structure</strong></td>
+                                <td>Immediate / Short-term / Long-term</td>
+                                <td>Matches real IR workflows</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Action + Grounding</strong></td>
+                                <td>"What to do" + "Why"</td>
+                                <td>Every recommendation must be justified</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Conditional Generation</strong></td>
+                                <td>"ONLY include if supported by…"</td>
+                                <td>Prevents irrelevant generic advice</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Edge Case Handling -->
+            <div class="result-card" style="margin-top: 20px;">
+                <div class="card-header-cyber" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+                    <i class="fas fa-exclamation-triangle"></i> Edge Case Handling — Noisy &amp; Incomplete Reports
+                </div>
+                <div class="card-body-cyber">
+                    <p style="margin-bottom: 14px;">Real-world incident reports are often incomplete, noisy, or ambiguous. The system handles this with a <strong>3-stage pipeline</strong>:</p>
+
+                    <div class="edge-case-pipeline">
+                        <div class="edge-stage">
+                            <div class="edge-stage-header">
+                                <span class="edge-stage-num">1</span>
+                                <strong>Preprocessing Validation</strong>
+                            </div>
+                            <ul>
+                                <li>Minimum length: 20 characters</li>
+                                <li>Garbled text detection: &gt;30% non-ASCII</li>
+                                <li>Auto entity extraction (CVE, IP, ECU)</li>
+                                <li>Missing field detection</li>
+                            </ul>
+                        </div>
+                        <div class="edge-stage-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="edge-stage">
+                            <div class="edge-stage-header">
+                                <span class="edge-stage-num">2</span>
+                                <strong>Edge Case Prompt</strong>
+                            </div>
+                            <ul>
+                                <li>Generates 3-5 clarification questions</li>
+                                <li>Each explains WHY info is needed</li>
+                                <li>Suggests example answers</li>
+                            </ul>
+                        </div>
+                        <div class="edge-stage-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="edge-stage">
+                            <div class="edge-stage-header">
+                                <span class="edge-stage-num">3</span>
+                                <strong>Progressive Disclosure</strong>
+                            </div>
+                            <ul>
+                                <li>If avg confidence &lt; 0.4 → <code>needs_input</code></li>
+                                <li>Returns partial summary + questions</li>
+                                <li>Analyst provides more info → full analysis</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Example -->
+                    <div class="decision-label" style="margin-top: 20px;">Example: Noisy Input &amp; System Response</div>
+
+                    <div class="edge-case-example">
+                        <div class="edge-example-input">
+                            <div class="edge-example-label"><i class="fas fa-keyboard"></i> Noisy Input</div>
+                            <pre><code>car hacked yesterday. something with the CAN bus.
+brakes felt weird. maybe CVE-2024-something??</code></pre>
+                        </div>
+                        <div class="edge-example-output">
+                            <div class="edge-example-label"><i class="fas fa-reply"></i> System Response</div>
+                            <pre><code>{
+  "status": "clarification_needed",
+  "warnings": [
+    "No specific CVE ID detected (partial reference)",
+    "No ECU explicitly identified",
+    "Missing: timestamp, severity, vehicle model"
+  ],
+  "clarification_questions": [
+    "Which vehicle make/model/year was affected?
+     → needed to identify ECU architecture",
+    "Can you provide the exact CVE ID?
+     → helps cross-reference known vulnerabilities",
+    "What exactly happened with the brakes?
+     → determines severity classification",
+    "How was the CAN bus compromise detected?
+     → helps identify the attack vector",
+    "Is the vehicle still compromised or isolated?
+     → critical for response prioritization"
+  ]
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div><!-- /arch-content -->
+
+    <!-- Footer -->
+    <footer class="arch-footer">
+        <div class="container-fluid px-4">
+            <p>Cybersecurity Copilot &mdash; CYMOTIVE Technologies &mdash; GenAI Assignment</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/architecture.js"></script>
+
+</body>
+</html>

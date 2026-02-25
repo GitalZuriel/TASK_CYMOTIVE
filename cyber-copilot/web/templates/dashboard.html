@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybersecurity Copilot — Automotive Incident Analysis</title>
+
+    <!-- Adara Base -->
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/animate.min.css">
+    <link rel="stylesheet" href="/static/css/fontawesome-all.min.css">
+
+    <!-- Copilot Theme -->
+    <link rel="stylesheet" href="/static/css/copilot.css">
+
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" data-i18n="loading_text">Analyzing Incident Report...</div>
+        <div class="loading-steps">
+            <div class="loading-step" id="step-preprocess">
+                <i class="fas fa-circle"></i> <span data-i18n="step_preprocess">Preprocessing &amp; entity extraction</span>
+            </div>
+            <div class="loading-step" id="step-validate">
+                <i class="fas fa-circle"></i> <span data-i18n="step_validate">Input completeness check</span>
+            </div>
+            <div class="loading-step" id="step-queryrewrite">
+                <i class="fas fa-circle"></i> <span data-i18n="step_queryrewrite">LLM query rewrite (symptoms &rarr; technical terms)</span>
+            </div>
+            <div class="loading-step" id="step-retrieval">
+                <i class="fas fa-circle"></i> <span data-i18n="step_retrieval">Hybrid retrieval (semantic + BM25)</span>
+            </div>
+            <div class="loading-step" id="step-rerank">
+                <i class="fas fa-circle"></i> <span data-i18n="step_rerank">Cross-encoder reranking</span>
+            </div>
+            <div class="loading-step" id="step-summary">
+                <i class="fas fa-circle"></i> <span data-i18n="step_summary">LLM incident summary</span>
+            </div>
+            <div class="loading-step" id="step-mitigation">
+                <i class="fas fa-circle"></i> <span data-i18n="step_mitigation">LLM mitigation planning</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar-cyber">
+        <div class="container-fluid px-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <a href="/" class="navbar-brand-cyber">
+                    <div class="brand-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="brand-text">
+                        <h1 data-i18n="brand_title">Cyber Copilot</h1>
+                        <span data-i18n="brand_subtitle">Automotive Incident Analysis</span>
+                    </div>
+                </a>
+
+                <div class="nav-status">
+                    <a href="/architecture" class="btn-nav-link btn-nav-architecture" title="Architecture & Design Decisions">
+                        <i class="fas fa-project-diagram"></i>
+                        <span>Architecture</span>
+                    </a>
+                    <select class="model-selector" id="modelSelect">
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="claude-sonnet">Claude Sonnet</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="hero-bg">
+            <img src="/static/svg/cutbg.svg" class="hero-bg-shape" alt="">
+        </div>
+        <div class="hero-content">
+            <div class="hero-text">
+                <h2 data-i18n="hero_title">Automotive Cyber<br>Incident Analysis</h2>
+                <p data-i18n="hero_desc">AI-powered cybersecurity copilot for automotive incident detection, analysis and mitigation planning.</p>
+            </div>
+            <div class="hero-illustration">
+                <img src="/static/svg/Illustartion1.svg" alt="Cyber Analysis">
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container">
+
+        <!-- Input Section -->
+        <div class="input-section" id="inputSection">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-file-alt"></i>
+                    <span data-i18n="section_incident_report">Incident Report</span>
+                </div>
+                <div class="example-btns">
+                    <button class="btn-example-arrow" onclick="loadPrevExample()" title="Previous example">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="btn-example" onclick="loadNextExample()" data-i18n="btn_example">For Example</button>
+                    <button class="btn-example-arrow" onclick="loadNextExample()" title="Next example">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            <textarea
+                class="report-textarea"
+                id="reportInput"
+                data-i18n-placeholder="textarea_placeholder"
+                placeholder="Paste or type an automotive cybersecurity incident report here...&#10;&#10;Example: Anomalous CAN frames detected on the powertrain bus originating from the OBD-II port. Arbitration ID 0x130 targeting EBCM at 10ms intervals..."
+            ></textarea>
+            <div class="input-actions">
+                <div></div>
+                <button class="btn-analyze" id="analyzeBtn" onclick="analyzeReport()">
+                    <i class="fas fa-search-plus"></i>
+                    <span data-i18n="btn_analyze">Analyze Incident</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Clarification Area (near input) -->
+        <div id="clarificationArea"></div>
+
+        <!-- User Results Section -->
+        <div id="resultsArea"></div>
+
+        <!-- Admin Section (hidden by default) -->
+        <div class="admin-section" id="adminSection" style="display:block">
+            <div class="admin-section-header">
+                <i class="fas fa-tools"></i>
+                <span data-i18n="admin_section_title">Admin Panel — Pipeline Diagnostics</span>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-bar fade-in" id="statsBar" style="display:none">
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <span><span data-i18n="stat_latency">Latency</span>: <span class="stat-value" id="statLatency">-</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-robot"></i>
+                    <span><span data-i18n="stat_model">Model</span>: <span class="stat-value" id="statModel">-</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-coins"></i>
+                    <span><span data-i18n="stat_tokens">Tokens</span>: <span class="stat-value" id="statTokens">-</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-dollar-sign"></i>
+                    <span><span data-i18n="stat_cost">Cost</span>: <span class="stat-value" id="statCost">-</span></span>
+                </div>
+            </div>
+
+            <!-- Admin Results (metrics, extracted fields, detailed stats) -->
+            <div id="adminResultsArea"></div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-cyber">
+        <span data-i18n="footer_text">Cybersecurity Copilot PoC &mdash; Hybrid RAG | Cross-Encoder Reranking | Multi-Model LLM</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/jquery-3.5.0.min.js"></script>
+    <script src="/static/js/popper.min.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/js/copilot.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,467 @@
+[
+  {
+    "id": "INC-001",
+    "title": "DNS Tunneling via Infotainment ECU",
+    "date": "2024-01-15",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "Compromised navigation app on Harman Gen4 infotainment ECU exfiltrated vehicle telemetry via DNS TXT record tunneling to C2 server. 2,400 vehicles affected.",
+    "description": "Anomalous DNS query patterns detected originating from the head-unit infotainment ECU (Harman Gen4) in a fleet of connected SUVs. Analysis revealed that a compromised third-party navigation app was exfiltrating vehicle telemetry data through encoded DNS TXT records to a C2 server at 185.220.101.42. The DNS tunnel was transmitting GPS coordinates, VIN numbers, and CAN bus diagnostic snapshots at 30-second intervals. Over 2,400 vehicles were affected before the rogue app was identified and removed from the OEM app store.",
+    "attack_vector": "Network Communication",
+    "affected_system": "Infotainment ECU",
+    "cve": "CVE-2024-2851",
+    "indicators": {
+      "ip_addresses": ["185.220.101.42"],
+      "protocols": ["DNS"],
+      "components": ["Infotainment ECU", "Harman Gen4"],
+      "data_exfiltrated": ["GPS coordinates", "VIN numbers", "CAN bus diagnostics"]
+    },
+    "attack_stage": ["Initial Access", "Command and Control", "Exfiltration"],
+    "mitre_tactics": ["TA0001", "TA0011", "TA0010"],
+    "mitigation": [
+      "Block outbound DNS TXT queries from vehicle ECUs",
+      "Revoke compromised navigation app certificate",
+      "Deploy DNS anomaly detection rules in VSOC",
+      "Implement application whitelisting on infotainment ECU"
+    ],
+    "metadata": {
+      "source": "internal_vsoc",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-002",
+    "title": "CAN Bus Injection Attack on Brake System",
+    "date": "2024-02-08",
+    "severity": "CRITICAL",
+    "severity_score": 5,
+    "summary": "CAN bus injection via OBD-II port spoofed brake ECU frames (arbitration ID 0x130), causing false ABS activation at speeds above 60 km/h. No CAN frame authentication implemented.",
+    "description": "A security researcher demonstrated a CAN bus injection attack on a 2024 model sedan by connecting a malicious device through the OBD-II port. The attack injected spoofed CAN frames (arbitration ID 0x130) targeting the Electronic Brake Control Module (EBCM), causing intermittent false ABS activation at speeds above 60 km/h. The attack exploited the lack of CAN frame authentication on the powertrain CAN bus. No message authentication code (MAC) was implemented on safety-critical frames, allowing arbitrary frame injection with valid arbitration IDs.",
+    "attack_vector": "Physical Access - CAN Bus",
+    "affected_system": "Brake ECU / EBCM",
+    "cve": "CVE-2024-3127",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["CAN"],
+      "components": ["Brake ECU", "EBCM", "OBD-II port"],
+      "can_ids": ["0x130"]
+    },
+    "attack_stage": ["Initial Access", "Lateral Movement", "Impact"],
+    "mitre_tactics": ["TA0001", "TA0008", "TA0040"],
+    "mitigation": [
+      "Implement CAN frame authentication (MAC) on safety-critical messages",
+      "Deploy CAN IDS for anomaly detection on powertrain bus",
+      "Restrict OBD-II port access with physical security controls",
+      "Add rate limiting on CAN arbitration IDs for safety-critical frames"
+    ],
+    "metadata": {
+      "source": "security_research",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-003",
+    "title": "OTA Update Server Compromise",
+    "date": "2024-03-22",
+    "severity": "CRITICAL",
+    "severity_score": 5,
+    "summary": "Supply chain attack on OTA CI/CD pipeline compromised firmware signing server. Malicious TCU firmware with backdoor pushed to 15,000 electric vehicles.",
+    "description": "An OEM's Over-The-Air update infrastructure was compromised through a supply chain attack on the CI/CD pipeline. Attackers gained access to the signing server and pushed a malicious firmware update to the Telematics Control Unit (TCU) of approximately 15,000 electric vehicles. The tampered update contained a backdoor that enabled remote access to the vehicle's internal network via the cellular modem. The compromise was detected when anomalous outbound connections to IP 91.215.85.17 were flagged by the OEM's VSOC (Vehicle Security Operations Center).",
+    "attack_vector": "Supply Chain - OTA Infrastructure",
+    "affected_system": "Telematics Control Unit (TCU)",
+    "cve": "CVE-2024-4502",
+    "indicators": {
+      "ip_addresses": ["91.215.85.17"],
+      "protocols": ["OTA", "cellular"],
+      "components": ["TCU", "CI/CD pipeline", "signing server"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Persistence", "Command and Control"],
+    "mitre_tactics": ["TA0001", "TA0003", "TA0011"],
+    "mitigation": [
+      "Implement multi-party firmware signing with HSM",
+      "Deploy integrity monitoring on CI/CD pipeline",
+      "Add certificate pinning for OTA update channels",
+      "Implement anomalous outbound connection detection in VSOC"
+    ],
+    "metadata": {
+      "source": "internal_vsoc",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-004",
+    "title": "Firmware Tampering on Gateway ECU",
+    "date": "2024-04-10",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "Compromised Tier-1 supplier workstation led to tampered gateway ECU bootloader. Secure Boot bypassed, CAN-to-Ethernet firewall rules disabled.",
+    "description": "During a routine security audit of a Tier-1 supplier's gateway ECU, analysts discovered unauthorized modifications to the bootloader firmware. The tampered bootloader bypassed Secure Boot verification, allowing unsigned code execution on the ARM Cortex-R5 processor. The modification was traced to a compromised developer workstation at the supplier's facility. The tampered firmware disabled CAN-to-Ethernet firewall rules, effectively bridging the vehicle's safety-critical and non-safety domains without any filtering.",
+    "attack_vector": "Supply Chain - Firmware Modification",
+    "affected_system": "Central Gateway ECU",
+    "cve": null,
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["CAN", "Ethernet"],
+      "components": ["Central Gateway ECU", "ARM Cortex-R5", "bootloader"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Defense Evasion", "Lateral Movement"],
+    "mitre_tactics": ["TA0001", "TA0005", "TA0008"],
+    "mitigation": [
+      "Enforce Secure Boot with hardware root of trust",
+      "Implement firmware integrity monitoring at runtime",
+      "Deploy endpoint security on supplier developer workstations",
+      "Segment safety-critical and non-safety domains with hardware isolation"
+    ],
+    "metadata": {
+      "source": "security_audit",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-005",
+    "title": "V2X Message Spoofing Attack",
+    "date": "2024-05-03",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "SDR-based V2X spoofing at smart intersection broadcast fake DENM/CAM messages causing emergency braking. Weak PKI certificate validation exploited.",
+    "description": "A coordinated V2X (Vehicle-to-Everything) spoofing attack was detected at a smart intersection in a European pilot city. Attackers used software-defined radios to broadcast fraudulent DENM (Decentralized Environmental Notification Messages) and CAM (Cooperative Awareness Messages) via ITS-G5 (802.11p). The spoofed messages falsely reported road hazards and phantom emergency vehicles, causing connected vehicles to perform unnecessary emergency braking and lane changes. The attack exploited weak certificate validation in the V2X stack's PKI implementation.",
+    "attack_vector": "Wireless - V2X Communication",
+    "affected_system": "V2X Communication Module",
+    "cve": "CVE-2024-5891",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["ITS-G5", "802.11p", "DENM", "CAM"],
+      "components": ["V2X Communication Module", "SDR transmitter"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Impact"],
+    "mitre_tactics": ["TA0001", "TA0040"],
+    "mitigation": [
+      "Implement robust V2X PKI certificate validation",
+      "Deploy V2X message plausibility checks",
+      "Add multi-source cross-validation for environmental notifications",
+      "Implement misbehavior detection system for V2X messages"
+    ],
+    "metadata": {
+      "source": "field_incident",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-006",
+    "title": "OBD-II Dongle Remote Exploitation",
+    "date": "2024-05-18",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "Unauthenticated REST API on fleet OBD-II dongles allowed root shell access. Arbitrary CAN frame injection and data exfiltration from 50,000 devices.",
+    "description": "A fleet management OBD-II dongle with cellular connectivity was found to have a critical vulnerability in its remote management API. Attackers exploited an unauthenticated REST endpoint to gain root shell access to the dongle's embedded Linux system. From there, they were able to send arbitrary CAN frames to the vehicle's diagnostic bus, read all PIDs, and exfiltrate real-time vehicle data including speed, RPM, fuel levels, and GPS location. Over 50,000 dongles across three fleet management providers were affected.",
+    "attack_vector": "Remote - IoT Device Exploitation",
+    "affected_system": "OBD-II Diagnostic Interface",
+    "cve": "CVE-2024-6203",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["REST API", "CAN", "cellular"],
+      "components": ["OBD-II dongle", "embedded Linux"],
+      "data_exfiltrated": ["speed", "RPM", "fuel levels", "GPS location"]
+    },
+    "attack_stage": ["Initial Access", "Collection", "Exfiltration"],
+    "mitre_tactics": ["TA0001", "TA0009", "TA0010"],
+    "mitigation": [
+      "Implement authentication on all REST API endpoints",
+      "Deploy network segmentation between dongle and CAN bus",
+      "Add CAN frame filtering and rate limiting on diagnostic interface",
+      "Conduct regular security audits of fleet management IoT devices"
+    ],
+    "metadata": {
+      "source": "vulnerability_disclosure",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-007",
+    "title": "Bluetooth Low Energy Pairing Attack on Digital Key",
+    "date": "2024-06-12",
+    "severity": "MEDIUM",
+    "severity_score": 3,
+    "summary": "BLE relay attack on digital key system using Raspberry Pi devices. RSSI manipulation bypassed distance estimation allowing unauthorized vehicle unlock and engine start.",
+    "description": "Researchers demonstrated a BLE relay attack against a premium OEM's digital key system. Using two Raspberry Pi devices with HCI BLE adapters, they relayed the BLE handshake between the owner's smartphone (up to 100 meters away) and the vehicle's BLE module in the Body Control Module (BCM). The attack bypassed the time-of-flight distance estimation by manipulating RSSI values in the relayed packets. This allowed unauthorized vehicle unlock and engine start without the owner's knowledge. The attack required the owner's phone to have the digital key app running in the background.",
+    "attack_vector": "Wireless - Bluetooth Low Energy",
+    "affected_system": "Body Control Module (BCM) / Digital Key System",
+    "cve": null,
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["BLE"],
+      "components": ["Body Control Module", "Digital Key System", "BLE module"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Impact"],
+    "mitre_tactics": ["TA0001", "TA0040"],
+    "mitigation": [
+      "Implement UWB-based distance bounding for digital key",
+      "Add time-of-flight validation resistant to relay attacks",
+      "Deploy BLE signal anomaly detection",
+      "Require user confirmation for engine start via digital key"
+    ],
+    "metadata": {
+      "source": "security_research",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-008",
+    "title": "GPS Spoofing Attack on Autonomous Shuttle",
+    "date": "2024-07-01",
+    "severity": "CRITICAL",
+    "severity_score": 5,
+    "summary": "GPS spoofing via portable SDR caused Level 4 autonomous shuttle 3-meter route deviation. No anti-spoofing or INS fusion implemented in GNSS receiver.",
+    "description": "A Level 4 autonomous shuttle operating in a geo-fenced urban area was subjected to a GPS spoofing attack using a portable SDR transmitter. The attacker gradually shifted the spoofed GPS coordinates, causing the shuttle's localization system to drift approximately 3 meters from its actual position. This resulted in the shuttle deviating from its planned route and mounting a curb at low speed. The GNSS receiver in the shuttle lacked anti-spoofing capabilities such as multi-constellation cross-validation or inertial navigation system (INS) fusion for anomaly detection.",
+    "attack_vector": "Wireless - GNSS Spoofing",
+    "affected_system": "GNSS Receiver / ADAS Localization",
+    "cve": "CVE-2024-7445",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["GNSS", "GPS"],
+      "components": ["GNSS Receiver", "ADAS Localization", "autonomous shuttle"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Impact"],
+    "mitre_tactics": ["TA0001", "TA0040"],
+    "mitigation": [
+      "Implement multi-constellation GNSS cross-validation",
+      "Deploy INS/GNSS fusion for spoofing anomaly detection",
+      "Add GNSS signal authentication capabilities",
+      "Implement geofence boundary alerts with redundant positioning"
+    ],
+    "metadata": {
+      "source": "field_incident",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-009",
+    "title": "Key Fob Relay Attack on Passive Entry System",
+    "date": "2024-07-20",
+    "severity": "MEDIUM",
+    "severity_score": 3,
+    "summary": "Key fob relay attacks using LF/UHF devices caused 120 vehicle thefts across 8 models from 4 OEMs. No UWB distance bounding or motion detection implemented.",
+    "description": "Multiple vehicle thefts in a metropolitan area were attributed to key fob relay attacks targeting vehicles with Passive Keyless Entry and Start (PKES) systems. Thieves used a pair of relay devices operating at 125 kHz (LF) and 433 MHz (UHF) to extend the communication range between the key fob and the vehicle up to 50 meters. The attack was successful against 8 different vehicle models from 4 OEMs that did not implement UWB-based distance bounding or motion-activated key fobs. Approximately 120 vehicles were stolen over a 3-month period using this technique.",
+    "attack_vector": "Wireless - RF Relay",
+    "affected_system": "Passive Keyless Entry System (PKES)",
+    "cve": null,
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["LF 125kHz", "UHF 433MHz"],
+      "components": ["PKES system", "key fob"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Impact"],
+    "mitre_tactics": ["TA0001", "TA0040"],
+    "mitigation": [
+      "Implement UWB-based distance bounding for keyless entry",
+      "Deploy motion-activated key fobs with automatic sleep mode",
+      "Add RF fingerprinting for relay attack detection",
+      "Educate vehicle owners on Faraday pouch usage for key fobs"
+    ],
+    "metadata": {
+      "source": "law_enforcement",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-010",
+    "title": "Telematics Gateway Breach via Cellular Interface",
+    "date": "2024-08-05",
+    "severity": "CRITICAL",
+    "severity_score": 5,
+    "summary": "Nation-state actor exploited buffer overflow in Qualcomm MDM9x50 AT command parser via crafted SMS. Pivoted from cellular modem to vehicle Ethernet backbone.",
+    "description": "A nation-state threat actor exploited a buffer overflow vulnerability in the AT command parser of a Qualcomm MDM9x50-based telematics gateway module. The exploit was delivered via a crafted SMS message to the vehicle's embedded SIM (eSIM). Upon successful exploitation, the attacker achieved code execution on the modem's application processor and pivoted to the vehicle's internal Ethernet backbone. The attack chain included lateral movement to the infotainment system and attempted access to the ADAS domain controller through the central gateway. The OEM's VSOC detected the intrusion through anomalous Ethernet traffic patterns on the DoIP (Diagnostics over IP) interface.",
+    "attack_vector": "Remote - Cellular Network",
+    "affected_system": "Telematics Gateway / Cellular Modem",
+    "cve": "CVE-2024-8901",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["SMS", "AT commands", "Ethernet", "DoIP"],
+      "components": ["Qualcomm MDM9x50", "telematics gateway", "eSIM", "infotainment system", "ADAS domain controller"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Execution", "Lateral Movement", "Discovery"],
+    "mitre_tactics": ["TA0001", "TA0002", "TA0008", "TA0007"],
+    "mitigation": [
+      "Patch AT command parser buffer overflow vulnerability",
+      "Implement SMS message validation and filtering on modem",
+      "Deploy network segmentation between cellular modem and vehicle backbone",
+      "Add anomalous Ethernet traffic detection on DoIP interface"
+    ],
+    "metadata": {
+      "source": "internal_vsoc",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-011",
+    "title": "ADAS Camera Adversarial Attack",
+    "date": "2024-08-28",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "Adversarial patches caused MobileNetV3 traffic sign misclassification with >95% confidence. Mobileye EyeQ5 ADAS controller lacked adversarial input validation.",
+    "description": "An adversarial attack targeting the ADAS forward-facing camera system was demonstrated on a production vehicle. Researchers placed specially crafted adversarial patches on road signs that caused the DNN-based traffic sign recognition model to misclassify stop signs as speed limit signs with high confidence (>95%). The attack exploited the MobileNetV3 model used in the ADAS perception pipeline. Additionally, projected light patterns on the road surface confused the lane detection algorithm, causing phantom lane markings that could trigger unintended lane departure corrections. The ADAS domain controller (Mobileye EyeQ5-based) did not implement adversarial input validation.",
+    "attack_vector": "Physical - Adversarial ML",
+    "affected_system": "ADAS Domain Controller / Camera System",
+    "cve": null,
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": [],
+      "components": ["ADAS camera", "Mobileye EyeQ5", "MobileNetV3", "lane detection system"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Initial Access", "Impact"],
+    "mitre_tactics": ["TA0001", "TA0040"],
+    "mitigation": [
+      "Implement adversarial input validation on perception pipeline",
+      "Deploy multi-sensor fusion for traffic sign recognition",
+      "Add confidence threshold calibration with anomaly detection",
+      "Implement runtime DNN model integrity monitoring"
+    ],
+    "metadata": {
+      "source": "security_research",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-012",
+    "title": "EV Charging Station Man-in-the-Middle Attack",
+    "date": "2024-09-15",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "MITM attack on ISO 15118 Plug & Charge via rogue PLC device. TLS handshake intercepted to steal certificates and clone payment credentials.",
+    "description": "A man-in-the-middle attack was discovered targeting the ISO 15118 Plug & Charge communication between electric vehicles and DC fast charging stations. The attacker deployed a rogue PLC (Power Line Communication) device between the charging cable and the station, intercepting the TLS handshake during the V2G (Vehicle-to-Grid) session. This allowed the attacker to steal the vehicle's Plug & Charge certificate, clone the payment credentials, and perform unauthorized charging sessions billed to the victim. The attack also enabled injection of malicious SECC (Supply Equipment Communication Controller) firmware updates to the vehicle's on-board charger ECU.",
+    "attack_vector": "Physical - Power Line Communication",
+    "affected_system": "On-Board Charger (OBC) / V2G Communication",
+    "cve": "CVE-2024-10234",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["ISO 15118", "PLC", "TLS", "V2G"],
+      "components": ["On-Board Charger", "SECC", "DC fast charging station"],
+      "data_exfiltrated": ["Plug & Charge certificate", "payment credentials"]
+    },
+    "attack_stage": ["Initial Access", "Credential Access", "Collection"],
+    "mitre_tactics": ["TA0001", "TA0006", "TA0009"],
+    "mitigation": [
+      "Implement mutual TLS authentication with certificate pinning",
+      "Deploy PLC communication integrity monitoring",
+      "Add anomaly detection for charging session parameters",
+      "Implement Plug & Charge certificate revocation checks"
+    ],
+    "metadata": {
+      "source": "vulnerability_disclosure",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-013",
+    "title": "Remote Keyless Entry Rolling Code Vulnerability",
+    "date": "2024-10-02",
+    "severity": "MEDIUM",
+    "severity_score": 3,
+    "summary": "Weak PRNG in NXP RKE chipset reduced effective keyspace from 40 to 24 bits. SDR capture of 5 transmissions predicted all future rolling codes. 2.5M vehicles affected.",
+    "description": "A vulnerability was discovered in the rolling code implementation of a widely-used NXP-based Remote Keyless Entry (RKE) system. The PRNG (Pseudo-Random Number Generator) used for rolling code generation had insufficient entropy, with only 24 bits of effective keyspace instead of the specified 40 bits. Using a HackRF SDR and custom GNURadio flowgraph, researchers captured 5 consecutive key fob transmissions at 315 MHz and were able to predict all future rolling codes within 15 minutes of computation on a standard laptop. This affected approximately 2.5 million vehicles across multiple OEMs using the same RKE chipset.",
+    "attack_vector": "Wireless - RF Analysis",
+    "affected_system": "Remote Keyless Entry (RKE) System",
+    "cve": "CVE-2024-11087",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["RF 315MHz"],
+      "components": ["NXP RKE chipset", "key fob", "PRNG"],
+      "data_exfiltrated": []
+    },
+    "attack_stage": ["Reconnaissance", "Initial Access"],
+    "mitre_tactics": ["TA0043", "TA0001"],
+    "mitigation": [
+      "Upgrade PRNG to cryptographically secure implementation (CSPRNG)",
+      "Increase rolling code keyspace to minimum 128 bits",
+      "Implement AES-based rolling code generation",
+      "Deploy key fob firmware OTA update mechanism"
+    ],
+    "metadata": {
+      "source": "security_research",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-014",
+    "title": "Cellular Modem Baseband Exploit",
+    "date": "2024-10-25",
+    "severity": "CRITICAL",
+    "severity_score": 5,
+    "summary": "Zero-click baseband exploit via rogue base station targeting Sierra Wireless HL78xx. Heap overflow in LTE RRC parser with lateral movement via UART/SPI bus.",
+    "description": "A zero-click exploit targeting the baseband processor of the Sierra Wireless HL78xx cellular modem, commonly used in automotive TCUs, was discovered in the wild. The exploit leveraged a heap overflow in the LTE RRC (Radio Resource Control) message parser, triggered by a malformed RRCConnectionReconfiguration message sent from a rogue base station (IMSI catcher). Successful exploitation granted the attacker arbitrary code execution on the modem's Cortex-A7 processor, enabling interception of all cellular communications, GPS tracking, and potential lateral movement to the vehicle's application processor via the shared UART/SPI bus.",
+    "attack_vector": "Remote - Cellular Baseband",
+    "affected_system": "Cellular Modem / TCU Baseband Processor",
+    "cve": "CVE-2024-12456",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["LTE RRC", "UART", "SPI"],
+      "components": ["Sierra Wireless HL78xx", "Cortex-A7", "baseband processor", "IMSI catcher"],
+      "data_exfiltrated": ["cellular communications", "GPS tracking data"]
+    },
+    "attack_stage": ["Initial Access", "Execution", "Lateral Movement"],
+    "mitre_tactics": ["TA0001", "TA0002", "TA0008"],
+    "mitigation": [
+      "Patch heap overflow in LTE RRC message parser",
+      "Implement baseband processor memory protection (ASLR, stack canaries)",
+      "Deploy hardware isolation between modem and application processor",
+      "Add anomalous RRC message detection and filtering"
+    ],
+    "metadata": {
+      "source": "threat_intelligence",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  },
+  {
+    "id": "INC-015",
+    "title": "ECU Firmware Rollback via Diagnostic Protocol",
+    "date": "2024-11-10",
+    "severity": "HIGH",
+    "severity_score": 4,
+    "summary": "Firmware rollback via UDS RequestDownload (0x34) re-introduced patched vulnerabilities. ECU verified firmware signature but not version number.",
+    "description": "An ECU firmware rollback attack was executed through the UDS (Unified Diagnostic Services) protocol on a connected vehicle. The attacker gained access to the diagnostic session through an exposed DoIP (Diagnostics over IP) port on the vehicle's internal network, accessible via the compromised infotainment system. By initiating a UDS RequestDownload (0x34) service with a legitimate but outdated firmware version, the attacker rolled back the Engine Control Module firmware to a version with known vulnerabilities (pre-security-patch). The rollback bypassed the version check because the ECU only verified the firmware signature, not the version number. This re-introduced a previously patched CAN bus authentication bypass vulnerability.",
+    "attack_vector": "Network - Diagnostic Protocol (UDS/DoIP)",
+    "affected_system": "Engine Control Module (ECM)",
+    "cve": "CVE-2024-13301",
+    "indicators": {
+      "ip_addresses": [],
+      "protocols": ["UDS", "DoIP"],
+      "components": ["Engine Control Module", "infotainment system", "central gateway"],
+      "uds_services": ["RequestDownload (0x34)"]
+    },
+    "attack_stage": ["Initial Access", "Defense Evasion", "Persistence"],
+    "mitre_tactics": ["TA0001", "TA0005", "TA0003"],
+    "mitigation": [
+      "Implement firmware version rollback protection (anti-rollback counter)",
+      "Add version number verification alongside signature checks",
+      "Restrict DoIP port access with network segmentation",
+      "Deploy UDS session monitoring and anomaly detection in VSOC"
+    ],
+    "metadata": {
+      "source": "penetration_test",
+      "domain": "automotive_cybersecurity",
+      "year": 2024
+    }
+  }
+]
