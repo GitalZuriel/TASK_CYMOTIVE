@@ -6,7 +6,7 @@ AI-powered incident analysis copilot for automotive cybersecurity reports — bu
 
 ## Demo
 
-![Dashboard Screenshot](web/static/img/demo-screenshot.png)
+https://drive.google.com/file/d/195wd2-pauShL-wZLBOpnDxCDm453MmKe/view?usp=sharing
 
 <!-- Replace the path above with an actual screenshot or GIF of the dashboard -->
 
